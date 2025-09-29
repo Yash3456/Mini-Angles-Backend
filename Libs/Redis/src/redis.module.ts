@@ -1,6 +1,8 @@
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import Redis from "ioredis";
+import { RedisService } from "./redis.service";
+import { RedisPubSubService } from "./redis-pubsub.service";
 
 @Module({
   providers: [
@@ -37,8 +39,10 @@ import Redis from "ioredis";
       },
       inject:[ConfigService],
     },
+    RedisService,
+    RedisPubSubService
   ],
-  exports:['REDIS_CLIENT'],
+  exports:['REDIS_CLIENT', RedisPubSubService, RedisService],
 
 })
 
