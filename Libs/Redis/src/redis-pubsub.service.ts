@@ -71,7 +71,7 @@ export class RedisPubSubService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async susbscribe(channel: string, handler: MessageHandler): Promise<void> {
+  async subscribe(channel: string, handler: MessageHandler): Promise<void> {
     try {
       if (!this.MessageHandlers.has(channel)) {
         this.MessageHandlers.set(channel, new Set());
@@ -122,7 +122,7 @@ export class RedisPubSubService implements OnModuleInit, OnModuleDestroy {
     channel: string,
     handler: (channel: string, data: T) => void,
   ): Promise<void> {
-    await this.susbscribe(channel, (chan: string, message: string) => {
+    await this.subscribe(channel, (chan: string, message: string) => {
       try {
         const data = JSON.parse(message);
         handler(channel, data as T);

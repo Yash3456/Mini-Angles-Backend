@@ -16,7 +16,7 @@ model SME {
   last_name             String?
   company_email         String    @unique
   password              String
-  phone_number          String
+  phone_number          String    @unique
   company_name          String
   company_address       String
   company_monthly_sales Float
@@ -27,7 +27,7 @@ model SME {
   pan                   String
   collaterals           Json
   isverified            Boolean
-  company_GST_Number    String
+  company_GST_Number    String    
   balance_amount        Float
   company_logo          String
   company_description   String
@@ -70,12 +70,10 @@ model Investor {
 
 model Token {
   id            Int       @id @default(autoincrement())
-  sme_id        Int
-  Investor_id   Int
-  access_token  String
-  refresh_token String?
+  sme_id        Int?
+  Investor_id   Int?
+  refresh_token String
   expires_in    Int
-  token_type    String    @default("Bearer")
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 

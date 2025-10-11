@@ -1,6 +1,7 @@
 // dtos/sme.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEmail, IsBoolean, IsNumber, IsNotEmpty, IsJSON } from 'class-validator';
+import { JsonValue } from '@prisma/client/runtime/library';
+import { IsString, IsOptional, IsEmail, IsBoolean, IsNumber, IsNotEmpty, IsJSON, IsArray, ArrayNotEmpty } from 'class-validator';
 
 export class CreateSMEDto {
   @ApiProperty({ description: "First name of the SME" })
@@ -41,12 +42,12 @@ export class CreateSMEDto {
   @ApiProperty({ description: "Monthly sales" })
   @IsString()
   @IsNotEmpty()
-  company_monthly_sales!: string;
+  company_monthly_sales!: number;
 
   @ApiProperty({ description: "Annual sales" })
   @IsString()
   @IsNotEmpty()
-  company_annual_sales!: string;
+  company_annual_sales!: number;
 
   @ApiPropertyOptional({ description: "Google ID for OAuth login" })
   @IsString()
@@ -68,10 +69,15 @@ export class CreateSMEDto {
   @IsNotEmpty()
   pan!: string;
 
-  @ApiProperty({ description: "Company collaterals in JSON format" })
-  @IsJSON()
-  @IsNotEmpty()
-  collaterals!: any;
+  @ApiProperty({
+    description: 'Company collaterals as an array of strings',
+    type: [String],
+    example: ['pan.pdf', 'aadhar.pdf'],
+  })
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsString({ each: true }) 
+  collaterals!: string[];
 
   @ApiProperty({ description: "Verification status" })
   @IsBoolean()
@@ -80,7 +86,7 @@ export class CreateSMEDto {
   @ApiProperty({ description: "GST number" })
   @IsString()
   @IsNotEmpty()
-  Company_GST_Number!: string;
+  Company_GST_Number: string;
 
   @ApiProperty({ description: "Balance amount" })
   @IsNumber()
@@ -95,4 +101,34 @@ export class CreateSMEDto {
   @IsString()
   @IsNotEmpty()
   company_description!: string;
+}
+
+export class SMEResponse {
+  @ApiProperty()
+  access_token : string;
+
+  @ApiProperty()
+  refresh_token : string;
+
+  @ApiProperty()
+  expires_in : number;
+
+  @ApiProperty()
+  SME: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone_number: string;
+    company_name: string;
+    company_address: string;
+    company_monthly_sales: number;
+    company_annual_sales: number;
+    role: string;
+    balance_amount: number;
+    isverified: boolean;
+    company_logo: string;
+    company_description: string;
+    company_GST_Number: string;
+    collaterals: string[];
+  }
 }
