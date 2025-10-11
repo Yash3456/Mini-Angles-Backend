@@ -1,15 +1,149 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// schema.prisma
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model SME {
+  uniq_id               Int       @id @default(autoincrement())
+  first_name            String
+  last_name             String?
+  company_email         String    @unique
+  password              String
+  phone_number          String
+  company_name          String
+  company_address       String
+  company_monthly_sales Float
+  company_annual_sales  Float
+  google_id             String?   @unique
+  role                  String    @default("Co-Founder")
+  aadhar                String
+  pan                   String
+  collaterals           Json
+  isverified            Boolean
+  company_GST_Number    String
+  balance_amount        Float
+  company_logo          String
+  company_description   String
+  status                String    @default("pending")
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  // Relations
+  loans_received        Loan[]    @relation("SME_Loans")
+  tokens                Token[]
+  investments           Investment[]
+  companyGrowths        CompanyGrowth[]
+}
+
+model Investor {
+  uniq_id              Int       @id @default(autoincrement())
+  first_name           String
+  last_name            String?
+  email                String    @unique
+  password             String
+  phone_number         String
+  monthly_income       Float
+  annual_family_income Float
+  image_url            String
+  aadhar_card          String
+  pan_card             String
+  amount_invested      Float
+  google_id            String?   @unique
+  isverified           Boolean
+  kyc_status           String    @default("pending")
+  wallet_balance       Float     @default(0)
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  // Relations
+  tokens               Token[]
+  loans_funded         Loan[]    @relation("Investor_Loans")
+  investments          Investment[]
+}
+
+model Token {
+  id            Int       @id @default(autoincrement())
+  sme_id        Int
+  Investor_id   Int
+  access_token  String
+  refresh_token String?
+  expires_in    Int
+  token_type    String    @default("Bearer")
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Relations
+  sme       SME?      @relation(fields: [sme_id], references: [uniq_id])
+  investor  Investor? @relation(fields: [Investor_id], references: [uniq_id])
+}
+
+model Loan {
+  uniq_id              Int       @id @default(autoincrement())
+  loan_amount          Float
+  loan_interest        Float
+  reciever_id          Int
+  investor_id          Int?
+  emandate_amount      Float
+  estimate_date_of_repay DateTime?
+  transaction_id       Int?
+  platform             String
+  status               String    @default("active")
+  repayment_schedule   Json?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  // Relations
+  reciever   SME       @relation("SME_Loans", fields: [reciever_id], references: [uniq_id])
+  investor   Investor? @relation("Investor_Loans", fields: [investor_id], references: [uniq_id])
+  transaction Transaction? @relation(fields: [transaction_id], references: [uniq_id])
+}
+
+model Transaction {
+  uniq_id          Int       @id @default(autoincrement())
+  transaction_amount Float
+  transaction_date  DateTime  @default(now())
+  sender_id         Int
+  receiver_id       Int
+  sender_type       String
+  receiver_type     String
+  transaction_type  String
+  platform          String?
+  created_at        DateTime  @default(now())
+
+  // (Optional) You can relate this to Loans if you want to track repayments
+  loans Loan[]
+}
+
+model Investment {
+  id          Int       @id @default(autoincrement())
+  investorId  Int
+  smeId       Int
+  amount      Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+
+  // Relations
+  investor    Investor  @relation(fields: [investorId], references: [uniq_id])
+  sme         SME       @relation(fields: [smeId], references: [uniq_id])
+}
+
+model CompanyGrowth {
+  id          Int       @id @default(autoincrement())
+  smeId       Int
+  month       Int
+  year        Int
+  revenue     Float
+  profit      Float?
+  valuation   Float?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  sme         SME       @relation(fields: [smeId], references: [uniq_id])
 }
