@@ -132,3 +132,20 @@ export class SMEResponse {
     collaterals: string[];
   }
 }
+
+export class SMELoginDTO {
+  @ApiPropertyOptional({ description: "Company email" })
+  @IsEmail()
+  @IsNotEmpty()
+  company_email!: string;
+  
+  @ApiPropertyOptional({ description: "Password for login" })
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
+
+  @ApiPropertyOptional({ description: "Google ID for OAuth login" })
+  @IsString()
+  @IsOptional()
+  google_id?: string;
+}
