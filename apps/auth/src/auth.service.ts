@@ -518,7 +518,7 @@ async InvestorRefreshToken(refresh_token: string): Promise<InvestorResponse> {
       expires_in: validToken.expires_in,
     };
   } catch (error) {
-    this.logger.error('Error in refreshing Investor token', error);
+    this.logger.error('Error in refreshing Investor Token', error);
     throw new UnauthorizedException('Invalid refresh token');
   }
 }
