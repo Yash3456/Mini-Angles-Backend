@@ -1,73 +1,82 @@
 // dtos/sme.dto.ts
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { JsonValue } from '@prisma/client/runtime/library';
-import { IsString, IsOptional, IsEmail, IsBoolean, IsNumber, IsNotEmpty, IsJSON, IsArray, ArrayNotEmpty } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsEmail,
+  IsBoolean,
+  IsNumber,
+  IsNotEmpty,
+  IsJSON,
+  IsArray,
+  ArrayNotEmpty,
+} from 'class-validator';
 
 export class CreateSMEDto {
-  @ApiProperty({ description: "First name of the SME" })
+  @ApiProperty({ description: 'First name of the SME' })
   @IsString()
   @IsNotEmpty()
   first_name!: string;
 
-  @ApiPropertyOptional({ description: "Last name of the SME" })
+  @ApiPropertyOptional({ description: 'Last name of the SME' })
   @IsString()
   @IsOptional()
   last_name?: string;
 
-  @ApiProperty({ description: "Company email" })
+  @ApiProperty({ description: 'Company email' })
   @IsEmail()
   @IsNotEmpty()
   company_email!: string;
 
-  @ApiProperty({ description: "Password for login" })
+  @ApiProperty({ description: 'Password for login' })
   @IsString()
   @IsNotEmpty()
   password!: string;
 
-  @ApiProperty({ description: "Phone number" })
+  @ApiProperty({ description: 'Phone number' })
   @IsString()
   @IsNotEmpty()
   phone_number!: string;
 
-  @ApiProperty({ description: "Company name" })
+  @ApiProperty({ description: 'Company name' })
   @IsString()
   @IsNotEmpty()
   company_name!: string;
 
-  @ApiProperty({ description: "Company address" })
+  @ApiProperty({ description: 'Company address' })
   @IsString()
   @IsNotEmpty()
   company_address!: string;
 
-  @ApiProperty({ description: "Monthly sales" })
+  @ApiProperty({ description: 'Monthly sales' })
   @IsString()
   @IsNotEmpty()
   company_monthly_sales!: number;
 
-  @ApiProperty({ description: "Annual sales" })
+  @ApiProperty({ description: 'Annual sales' })
   @IsString()
   @IsNotEmpty()
   company_annual_sales!: number;
 
-  @ApiPropertyOptional({ description: "Google ID for OAuth login" })
+  @ApiPropertyOptional({ description: 'Google ID for OAuth login' })
   @IsString()
   @IsOptional()
   google_id?: string;
 
-  @ApiPropertyOptional({ description: "Role of the user" })
+  @ApiPropertyOptional({ description: 'Role of the user' })
   @IsString()
   @IsOptional()
   role?: string;
 
-  @ApiProperty({ description: "Aadhar number" })
+  @ApiProperty({ description: 'Aadhar number', format: 'binary' })
   @IsString()
   @IsNotEmpty()
-  aadhar!: string;
+  aadhar!: any;
 
-  @ApiProperty({ description: "PAN number" })
+  @ApiProperty({ description: 'PAN number', format: 'binary' })
   @IsString()
   @IsNotEmpty()
-  pan!: string;
+  pan!: any;
 
   @ApiProperty({
     description: 'Company collaterals as an array of strings',
@@ -76,28 +85,28 @@ export class CreateSMEDto {
   })
   @IsArray()
   @ArrayNotEmpty()
-  @IsString({ each: true }) 
+  @IsString({ each: true })
   collaterals!: string[];
 
-  @ApiProperty({ description: "Verification status" })
+  @ApiProperty({ description: 'Verification status' })
   @IsBoolean()
   isverified!: boolean;
 
-  @ApiProperty({ description: "GST number" })
+  @ApiProperty({ description: 'GST number' })
   @IsString()
   @IsNotEmpty()
   Company_GST_Number: string;
 
-  @ApiProperty({ description: "Balance amount" })
+  @ApiProperty({ description: 'Balance amount' })
   @IsNumber()
   Balance_Amount!: number;
 
-  @ApiProperty({ description: "Company logo URL" })
+  @ApiProperty({ description: 'Company logo URL' })
   @IsString()
   @IsNotEmpty()
   company_logo!: string;
 
-  @ApiProperty({ description: "Company description" })
+  @ApiProperty({ description: 'Company description' })
   @IsString()
   @IsNotEmpty()
   company_description!: string;
@@ -105,13 +114,13 @@ export class CreateSMEDto {
 
 export class SMEResponse {
   @ApiProperty()
-  access_token : string;
+  access_token: string;
 
   @ApiProperty()
-  refresh_token : string;
+  refresh_token: string;
 
   @ApiProperty()
-  expires_in : number;
+  expires_in: number;
 
   @ApiProperty()
   SME: {
@@ -130,22 +139,34 @@ export class SMEResponse {
     company_description: string;
     company_GST_Number: string;
     collaterals: string[];
-  }
+  };
 }
 
 export class SMELoginDTO {
-  @ApiPropertyOptional({ description: "Company email" })
+  @ApiPropertyOptional({ description: 'Company email' })
   @IsEmail()
   @IsNotEmpty()
   company_email!: string;
-  
-  @ApiPropertyOptional({ description: "Password for login" })
+
+  @ApiPropertyOptional({ description: 'Password for login' })
   @IsString()
   @IsNotEmpty()
   password!: string;
 
-  @ApiPropertyOptional({ description: "Google ID for OAuth login" })
+  @ApiPropertyOptional({ description: 'Google ID for OAuth login' })
   @IsString()
   @IsOptional()
   google_id?: string;
+}
+
+export class SMETokenValidationDTO {
+  @ApiProperty({ description: 'SME Token Validation' })
+  valid: boolean;
+
+  @ApiProperty({ required: false })
+  SME?: {
+    uniq_id: number;
+    first_name: string;
+    last_name: string;
+  };
 }

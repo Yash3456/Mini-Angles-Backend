@@ -7,13 +7,20 @@ import { Prisma } from '@prisma/client';
 import { DatabaseService } from 'Libs/Database/src/database.service';
 import { RedisService } from 'Libs/Redis/src';
 import { RedisPubSubService } from 'Libs/Redis/src/redis-pubsub.service';
-import { CreateSMEDto, SMELoginDTO, SMEResponse } from 'Libs/Common/DTO/SME.dto';
+import {
+  CreateSMEDto,
+  SMELoginDTO,
+  SMEResponse,
+  SMETokenValidationDTO,
+} from 'Libs/Common/DTO/SME.dto';
 import {
   CreateInvestorDto,
   InvestorLoginDTO,
   InvestorResponse,
+  InvestorTokenValidationDTO,
 } from 'Libs/Common/DTO/Investor.dto';
-import { Payload } from '@nestjs/microservices';
+import { REDIS_KEYS } from 'Libs/Common/Constant';
+import { OcrTesseractService } from 'Libs/Hooks';
 
 @Injectable()
 export class AuthService {
@@ -25,6 +32,7 @@ export class AuthService {
     private readonly redis: RedisService,
     private readonly pubsub: RedisPubSubService,
     private readonly configsService: ConfigService,
+    private readonly PanAadhar: OcrTesseractService,
   ) {}
 
   async onModuleInit() {
@@ -54,7 +62,8 @@ export class AuthService {
 
     await this.prisma.token.create({
       data: {
-        sme_id: payload.sub,
+        sme_id: payload.role === 'sme' ? payload.sub : null,
+        Investor_id: payload.role === 'investor' ? payload.sub : null,
         refresh_token: refreshToken,
         expires_in: 30 * 24 * 60 * 60,
       },
@@ -91,6 +100,11 @@ export class AuthService {
         where: { phone_number },
       });
 
+      let Pannumber = await this.PanAadhar.extractPanAadhar(pan[0].buffer);
+      let Aadharnumber = await this.PanAadhar.extractPanAadhar(
+        aadhar[0].buffer,
+      );
+
       if (existingUser) {
         throw new ConflictException(
           'User with this phone number already exists',
@@ -114,8 +128,8 @@ export class AuthService {
           role,
           company_GST_Number: Company_GST_Number,
           company_description,
-          aadhar,
-          pan,
+          aadhar: Aadharnumber?.aadhar_matches?.[0] || null,
+          pan: Pannumber?.pan_matches?.[0] || null,
           collaterals: collaterals || ([] as Prisma.JsonValue),
           company_logo,
           balance_amount: Balance_Amount,
@@ -202,19 +216,25 @@ export class AuthService {
       isverified,
     } = createInvestorDto;
 
-
     const existingInvestor = await this.prisma.investor.findUnique({
-      where: { phone_number }
+      where: { phone_number },
     });
 
-    if(existingInvestor){
-      throw new ConflictException('Investor with this phone number already exists');
+    let Pannumber = await this.PanAadhar.extractPanAadhar(pan_card[0].buffer);
+    let Aadharnumber = await this.PanAadhar.extractPanAadhar(
+      aadhar_card[0].buffer,
+    );
+
+    if (existingInvestor) {
+      throw new ConflictException(
+        'Investor with this phone number already exists',
+      );
     }
 
     let hashedPassword = await bcrypt.hash(password, 12);
 
     let newInvestor = await this.prisma.investor.create({
-      data:{
+      data: {
         first_name,
         last_name,
         email,
@@ -223,12 +243,12 @@ export class AuthService {
         monthly_income,
         annual_family_income,
         image_url,
-        aadhar_card,
-        pan_card,
+        aadhar_card: Aadharnumber?.aadhar_matches?.[0] || null,
+        pan_card: Pannumber?.pan_matches?.[0] || null,
         amount_invested,
         google_id,
-        isverified
-      }
+        isverified,
+      },
     });
 
     let payload = {
@@ -237,18 +257,26 @@ export class AuthService {
       first_name: newInvestor.first_name,
       last_name: newInvestor.last_name || '',
       role: 'investor',
-    }
+    };
 
     let access_token = await this.jwtService.signAsync(payload);
     let refresh_token = await this.generateRefreshToken(payload);
 
-    await this.redis.setJson(`user:${newInvestor.uniq_id}`, {newInvestor}, 3600);
-    await this.pubsub.publishAuthEvent('registered', newInvestor.uniq_id.toString(), {
-      email: newInvestor.email,
-      first_name: newInvestor.first_name,
-      last_name: newInvestor.last_name || '',
-      role: 'investor',
-    });
+    await this.redis.setJson(
+      `user:${newInvestor.uniq_id}`,
+      { newInvestor },
+      3600,
+    );
+    await this.pubsub.publishAuthEvent(
+      'registered',
+      newInvestor.uniq_id.toString(),
+      {
+        email: newInvestor.email,
+        first_name: newInvestor.first_name,
+        last_name: newInvestor.last_name || '',
+        role: 'investor',
+      },
+    );
 
     this.logger.log(`Investor user created with ID: ${newInvestor.uniq_id}`);
 
@@ -264,29 +292,28 @@ export class AuthService {
         annual_family_income: newInvestor.annual_family_income,
         image_url: newInvestor.image_url,
         amount_invested: newInvestor.amount_invested,
-        isverified: newInvestor.isverified
+        isverified: newInvestor.isverified,
       },
-      expires_in: 30 * 24 * 60 * 60
+      expires_in: 30 * 24 * 60 * 60,
     };
   }
 
-  async SMELogin(SMELoginDTO:SMELoginDTO): Promise<SMEResponse> {
-   
+  async SMELogin(SMELoginDTO: SMELoginDTO): Promise<SMEResponse> {
     let { company_email, password, google_id } = SMELoginDTO;
-    
+
     let hashedPassword = await bcrypt.hash(password, 12);
 
     let ManualUser = await this.prisma.sME.findUnique({
-      where: { company_email, password: hashedPassword }
-    }); 
-
-    let GoogleUser = await this.prisma.sME.findUnique({
-      where: { google_id }
+      where: { company_email, password: hashedPassword },
     });
 
-    if(!ManualUser || !GoogleUser){
+    let GoogleUser = await this.prisma.sME.findUnique({
+      where: { google_id },
+    });
+
+    if (!ManualUser || !GoogleUser) {
       throw new ConflictException('User with this email does not exist');
-    } 
+    }
 
     let Payload = {
       sub: ManualUser.uniq_id,
@@ -294,12 +321,16 @@ export class AuthService {
       first_name: ManualUser.first_name,
       last_name: ManualUser.last_name || '',
       role: 'sme',
-    }
+    };
 
     let access_token = await this.jwtService.signAsync(Payload);
     let refresh_token = await this.generateRefreshToken(Payload);
 
-    await this.redis.setJson(`user:${ManualUser.uniq_id}`, {ManualUser}, 3600);
+    await this.redis.setJson(
+      `user:${ManualUser.uniq_id}`,
+      { ManualUser },
+      3600,
+    );
 
     this.logger.log(`SME user logged in with ID: ${ManualUser.uniq_id}`);
 
@@ -325,26 +356,26 @@ export class AuthService {
       },
       expires_in: 30 * 24 * 60 * 60,
     };
-
   }
 
-   async InvestorLogin(InvestorLoginDTO:InvestorLoginDTO): Promise<InvestorResponse> {
-   
+  async InvestorLogin(
+    InvestorLoginDTO: InvestorLoginDTO,
+  ): Promise<InvestorResponse> {
     let { email, password, google_id } = InvestorLoginDTO;
-    
+
     let hashedPassword = await bcrypt.hash(password, 12);
 
     let ManualUser = await this.prisma.investor.findUnique({
-      where: { email, password: hashedPassword }
-    }); 
-
-    let GoogleUser = await this.prisma.investor.findUnique({
-      where: { google_id }
+      where: { email, password: hashedPassword },
     });
 
-    if(!ManualUser || !GoogleUser){
+    let GoogleUser = await this.prisma.investor.findUnique({
+      where: { google_id },
+    });
+
+    if (!ManualUser || !GoogleUser) {
       throw new ConflictException('User with this email does not exist');
-    } 
+    }
 
     let Payload = {
       sub: ManualUser.uniq_id,
@@ -352,19 +383,23 @@ export class AuthService {
       first_name: ManualUser.first_name,
       last_name: ManualUser.last_name || '',
       role: 'sme',
-    }
+    };
 
     let access_token = await this.jwtService.signAsync(Payload);
     let refresh_token = await this.generateRefreshToken(Payload);
 
-    await this.redis.setJson(`user:${ManualUser.uniq_id}`, {ManualUser}, 3600);
+    await this.redis.setJson(
+      `user:${ManualUser.uniq_id}`,
+      { ManualUser },
+      3600,
+    );
 
     this.logger.log(`SME user logged in with ID: ${ManualUser.uniq_id}`);
 
     return {
       access_token,
       refresh_token,
-      Investor:{
+      Investor: {
         first_name: ManualUser.first_name,
         last_name: ManualUser.last_name || '',
         email: ManualUser.email,
@@ -373,218 +408,286 @@ export class AuthService {
         annual_family_income: ManualUser.annual_family_income,
         image_url: ManualUser.image_url,
         amount_invested: ManualUser.amount_invested,
-        isverified: ManualUser.isverified
+        isverified: ManualUser.isverified,
       },
       expires_in: 30 * 24 * 60 * 60,
     };
   }
 
   async SMErefreshToken(refresh_token: string): Promise<SMEResponse> {
-  try {
-    const payload = await this.jwtService.verifyAsync(refresh_token, {
-      secret: this.configsService.get<string>('JWT_REFRESH_SECRET'),
-    });
+    try {
+      const payload = await this.jwtService.verifyAsync(refresh_token, {
+        secret: this.configsService.get<string>('JWT_REFRESH_SECRET'),
+      });
 
-    const validToken = await this.prisma.token.findFirst({
-      where: {
-        sme_id: payload.sub,
+      const validToken = await this.prisma.token.findFirst({
+        where: {
+          sme_id: payload.sub,
+          refresh_token,
+        },
+      });
+
+      if (!validToken) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const tokenCreatedAt = validToken.created_at;
+      const expiryMs = validToken.expires_in * 1000;
+      if (Date.now() - tokenCreatedAt.getTime() > expiryMs) {
+        throw new UnauthorizedException('Refresh token has expired');
+      }
+
+      const newPayload = {
+        sub: validToken.sme_id,
+        email: payload.email,
+        first_name: payload.first_name,
+        last_name: payload.last_name,
+        role: payload.role,
+      };
+
+      const access_token = await this.jwtService.signAsync(newPayload);
+
+      let cachedSME: SMEResponse['SME'] | null = await this.redis.getJson(
+        `user:${validToken.sme_id}`,
+      );
+
+      if (!cachedSME) {
+        const SMEFromDB = await this.prisma.sME.findUnique({
+          where: { uniq_id: payload.sub },
+        });
+        if (!SMEFromDB) throw new UnauthorizedException('User not found');
+
+        await this.redis.setJson(`user:${validToken.sme_id}`, SMEFromDB, 3600);
+        cachedSME = {
+          first_name: SMEFromDB.first_name,
+          last_name: SMEFromDB.last_name || '',
+          email: SMEFromDB.company_email,
+          phone_number: SMEFromDB.phone_number,
+          company_name: SMEFromDB.company_name,
+          company_address: SMEFromDB.company_address,
+          company_monthly_sales: SMEFromDB.company_monthly_sales,
+          company_annual_sales: SMEFromDB.company_annual_sales,
+          role: SMEFromDB.role,
+          balance_amount: SMEFromDB.balance_amount,
+          isverified: SMEFromDB.isverified,
+          company_logo: SMEFromDB.company_logo,
+          company_description: SMEFromDB.company_description,
+          company_GST_Number: SMEFromDB.company_GST_Number,
+          collaterals: SMEFromDB.collaterals as string[],
+        };
+      }
+
+      return {
+        access_token,
         refresh_token,
-      },
-    });
-
-    if (!validToken) {
+        SME: cachedSME,
+        expires_in: validToken.expires_in,
+      };
+    } catch (error) {
+      this.logger.error('Error in refreshing SME token', error);
       throw new UnauthorizedException('Invalid refresh token');
     }
-
-    const tokenCreatedAt = validToken.created_at;
-    const expiryMs = validToken.expires_in * 1000;
-    if (Date.now() - tokenCreatedAt.getTime() > expiryMs) {
-      throw new UnauthorizedException('Refresh token has expired');
-    }
-
-    const newPayload = {
-      sub: validToken.sme_id,
-      email: payload.email,
-      first_name: payload.first_name,
-      last_name: payload.last_name,
-      role: payload.role,
-    };
-
-    const access_token = await this.jwtService.signAsync(newPayload);
-
-    let cachedSME: SMEResponse['SME'] | null = await this.redis.getJson(
-      `user:${validToken.sme_id}`,
-    );
-
-    if (!cachedSME) {
-      const SMEFromDB = await this.prisma.sME.findUnique({
-        where: { uniq_id: payload.sub },
-      });
-      if (!SMEFromDB) throw new UnauthorizedException('User not found');
-
-      await this.redis.setJson(`user:${validToken.sme_id}`, SMEFromDB, 3600);
-      cachedSME = {
-        first_name: SMEFromDB.first_name,
-        last_name: SMEFromDB.last_name || '',
-        email: SMEFromDB.company_email,
-        phone_number: SMEFromDB.phone_number,
-        company_name: SMEFromDB.company_name,
-        company_address: SMEFromDB.company_address,
-        company_monthly_sales: SMEFromDB.company_monthly_sales,
-        company_annual_sales: SMEFromDB.company_annual_sales,
-        role: SMEFromDB.role,
-        balance_amount: SMEFromDB.balance_amount,
-        isverified: SMEFromDB.isverified,
-        company_logo: SMEFromDB.company_logo,
-        company_description: SMEFromDB.company_description,
-        company_GST_Number: SMEFromDB.company_GST_Number,
-        collaterals: SMEFromDB.collaterals as string[],
-      };
-    }
-
-    return {
-      access_token,
-      refresh_token,
-      SME: cachedSME,
-      expires_in: validToken.expires_in,
-    };
-  } catch (error) {
-    this.logger.error('Error in refreshing SME token', error);
-    throw new UnauthorizedException('Invalid refresh token');
   }
-}
 
-async InvestorRefreshToken(refresh_token: string): Promise<InvestorResponse> {
-  try {
-    const payload = await this.jwtService.verifyAsync(refresh_token, {
-      secret: this.configsService.get<string>('JWT_REFRESH_SECRET'),
-    });
+  async InvestorRefreshToken(refresh_token: string): Promise<InvestorResponse> {
+    try {
+      const payload = await this.jwtService.verifyAsync(refresh_token, {
+        secret: this.configsService.get<string>('JWT_REFRESH_SECRET'),
+      });
 
-    const validToken = await this.prisma.token.findFirst({
-      where: {
-        Investor_id: payload.sub,
+      const validToken = await this.prisma.token.findFirst({
+        where: {
+          Investor_id: payload.sub,
+          refresh_token,
+        },
+      });
+
+      if (!validToken) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const tokenCreatedAt = validToken.created_at;
+      const expiryMs = validToken.expires_in * 1000;
+      if (Date.now() - tokenCreatedAt.getTime() > expiryMs) {
+        throw new UnauthorizedException('Refresh token has expired');
+      }
+
+      const newPayload = {
+        sub: payload.sub,
+        email: payload.email,
+        first_name: payload.first_name,
+        last_name: payload.last_name,
+        role: payload.role,
+      };
+
+      const access_token = await this.jwtService.signAsync(newPayload);
+
+      let cachedInvestor: InvestorResponse['Investor'] | null =
+        await this.redis.getJson(`user:${payload.sub}`);
+
+      if (!cachedInvestor) {
+        const investorFromDB = await this.prisma.investor.findUnique({
+          where: { uniq_id: payload.sub },
+        });
+        if (!investorFromDB) throw new UnauthorizedException('User not found');
+
+        await this.redis.setJson(`user:${payload.sub}`, investorFromDB, 3600);
+
+        cachedInvestor = {
+          first_name: investorFromDB.first_name,
+          last_name: investorFromDB.last_name || '',
+          email: investorFromDB.email,
+          phone_number: investorFromDB.phone_number,
+          monthly_income: investorFromDB.monthly_income,
+          annual_family_income: investorFromDB.annual_family_income,
+          image_url: investorFromDB.image_url,
+          amount_invested: investorFromDB.amount_invested,
+          isverified: investorFromDB.isverified,
+        };
+      }
+      return {
+        access_token,
         refresh_token,
-      },
-    });
-
-    if (!validToken) {
+        Investor: cachedInvestor,
+        expires_in: validToken.expires_in,
+      };
+    } catch (error) {
+      this.logger.error('Error in refreshing Investor Token', error);
       throw new UnauthorizedException('Invalid refresh token');
     }
+  }
 
-    const tokenCreatedAt = validToken.created_at;
-    const expiryMs = validToken.expires_in * 1000;
-    if (Date.now() - tokenCreatedAt.getTime() > expiryMs) {
-      throw new UnauthorizedException('Refresh token has expired');
+  async SMEVerifyToken(token: string): Promise<SMETokenValidationDTO> {
+    try {
+      let payload = await this.jwtService.verifyAsync(token);
+
+      let cachedUser = await this.redis.getJson(
+        `${REDIS_KEYS.USER_SESSION}${payload.sub}`,
+      );
+
+      if (cachedUser) {
+        return {
+          valid: true,
+          SME: cachedUser as any,
+        };
+      } else {
+        let UserfromDB = await this.prisma.sME.findUnique({
+          where: { uniq_id: payload.sub },
+        });
+
+        if (!UserfromDB) {
+          return {
+            valid: false,
+          };
+        }
+
+        await this.redis.setJson(
+          `${REDIS_KEYS.USER_SESSION}${UserfromDB.uniq_id}`,
+          {
+            uniq_id: UserfromDB.uniq_id,
+            first_name: UserfromDB.first_name,
+            last_name: UserfromDB.last_name,
+          },
+          3600,
+        );
+        return {
+          valid: true,
+          SME: {
+            uniq_id: UserfromDB.uniq_id,
+            first_name: UserfromDB.first_name,
+            last_name: UserfromDB.last_name || '',
+          },
+        };
+      }
+    } catch (error) {
+      this.logger.error('Verification failed', error);
+      return { valid: false };
     }
+  }
 
-    const newPayload = {
-      sub: payload.sub,
-      email: payload.email,
-      first_name: payload.first_name,
-      last_name: payload.last_name,
-      role: payload.role,
-    };
+  async InvestorVerifytoken(
+    token: string,
+  ): Promise<InvestorTokenValidationDTO> {
+    try {
+      const payload = await this.jwtService.verifyAsync(token);
 
-    const access_token = await this.jwtService.signAsync(newPayload);
+      let cachedUser = await this.redis.getJson(
+        `${REDIS_KEYS.USER_SESSION}${payload.sub}`,
+      );
 
-    let cachedInvestor: InvestorResponse['Investor'] | null = await this.redis.getJson(
-      `user:${payload.sub}`,
-    );
+      if (cachedUser) {
+        return {
+          valid: true,
+          Investor: cachedUser as any,
+        };
+      } else {
+        let UserfromDB = await this.prisma.investor.findUnique({
+          where: { uniq_id: payload.sub },
+        });
 
-    if (!cachedInvestor) {
-      const investorFromDB = await this.prisma.investor.findUnique({
-        where: { uniq_id: payload.sub },
+        if (!UserfromDB) {
+          return {
+            valid: false,
+          };
+        }
+
+        await this.redis.setJson(
+          `${REDIS_KEYS.USER_SESSION}${UserfromDB.uniq_id}`,
+          {
+            uniq_id: UserfromDB.uniq_id,
+            first_name: UserfromDB.first_name,
+            last_name: UserfromDB.last_name,
+          },
+          3600,
+        );
+
+        return {
+          valid: true,
+          Investor: {
+            uniq_id: UserfromDB.uniq_id,
+            first_name: UserfromDB.first_name,
+            last_name: UserfromDB.last_name || '',
+          },
+        };
+      }
+    } catch (error) {
+      this.logger.error('Verification failed', error);
+      return { valid: false };
+    }
+  }
+
+  async SMELogout(userId: number): Promise<{ success: boolean }> {
+    try {
+      await this.prisma.token.deleteMany({
+        where: {
+          sme_id: userId,
+        },
       });
-      if (!investorFromDB) throw new UnauthorizedException('User not found');
 
-      await this.redis.setJson(`user:${payload.sub}`, investorFromDB, 3600);
+      await this.redis.del(`${REDIS_KEYS.USER_SESSION}${userId}`);
 
-      cachedInvestor = {
-        first_name: investorFromDB.first_name,
-        last_name: investorFromDB.last_name || '',
-        email: investorFromDB.email,
-        phone_number: investorFromDB.phone_number,
-        monthly_income: investorFromDB.monthly_income,
-        annual_family_income: investorFromDB.annual_family_income,
-        image_url: investorFromDB.image_url,
-        amount_invested: investorFromDB.amount_invested,
-        isverified: investorFromDB.isverified,
-      };
+      await this.pubsub.publishAuthEvent('logout', userId.toString());
+      return { success: true };
+    } catch (error) {
+      this.logger.error('Error during SME logout', error);
+      return { success: false };
     }
-    return {
-      access_token,
-      refresh_token,
-      Investor: cachedInvestor,
-      expires_in: validToken.expires_in,
-    };
-  } catch (error) {
-    this.logger.error('Error in refreshing Investor Token', error);
-    throw new UnauthorizedException('Invalid refresh token');
+  }
+
+  async InvestorLogout(userId: number): Promise<{ success: boolean }> {
+    try {
+      await this.prisma.token.deleteMany({
+        where: {
+          Investor_id: userId,
+        },
+      });
+
+      await this.redis.del(`${REDIS_KEYS.USER_SESSION}${userId}`);
+      await this.pubsub.publishAuthEvent('logout', userId.toString());
+      return { success: true };
+    } catch (error) {
+      this.logger.error('Error during Investor logout', error);
+      return { success: false };
+    }
   }
 }
-
-}
-
-
-
-
-// npm install tesseract.js sharp multer
-// # or yarn add tesseract.js sharp multer
-
-// // src/ocr/ocr-tesseract.service.ts
-// import { Injectable, Logger } from '@nestjs/common';
-// import * as sharp from 'sharp';
-// import { createWorker } from 'tesseract.js';
-
-// @Injectable()
-// export class OcrTesseractService {
-//   private readonly logger = new Logger(OcrTesseractService.name);
-//   private worker = createWorker({
-//     // logger: m => console.log(m), // optional progress
-//   });
-
-//   private readonly panRegex = /[A-Z]{5}[0-9]{4}[A-Z]/g;
-//   private readonly aadharRegex = /\b\d{4}\s?\d{4}\s?\d{4}\b/g;
-
-//   async initWorker() {
-//     await this.worker.load();
-//     await this.worker.loadLanguage('eng');
-//     await this.worker.initialize('eng');
-//     // optionally set parameters for better accuracy
-//   }
-
-//   async preprocessImage(buffer: Buffer) {
-//     return sharp(buffer)
-//       .resize({ width: 1200, withoutEnlargement: true })
-//       .grayscale()
-//       .normalize()
-//       .toFormat('png')
-//       .toBuffer();
-//   }
-
-//   async extractPanAadhar(buffer: Buffer) {
-//     try {
-//       const pre = await this.preprocessImage(buffer);
-//       await this.initWorker();
-
-//       const { data } = await this.worker.recognize(pre);
-//       const text = data?.text ?? '';
-
-//       const pans = (text.match(this.panRegex) || []).map(s => s.trim());
-//       const aadhars = (text.match(this.aadharRegex) || []).map(s => s.replace(/\s+/g, ''));
-
-//       // terminate worker if you don't need it further
-//       await this.worker.terminate();
-
-//       return {
-//         text,
-//         pan_matches: pans,
-//         aadhar_matches: aadhars,
-//       };
-//     } catch (err) {
-//       this.logger.error('Tesseract OCR failed', err);
-//       throw err;
-//     }
-//   }
-// }
-

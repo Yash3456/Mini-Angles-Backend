@@ -147,3 +147,17 @@ export class UpdatePasswordDto {
   @IsNotEmpty()
   new_password!: string;
 }
+
+export class TokenValidationResponseDto {
+  @ApiProperty()
+  valid: boolean;
+
+  @ApiProperty({required: true})
+  user?: {
+    id:string;
+    email:string;
+    first_name:string;
+    last_name:string;
+    role:string;
+  }
+}

@@ -43,15 +43,15 @@ export class CreateInvestorDto {
   @IsNotEmpty()
   image_url!: string;
 
-  @ApiProperty({ description: "Aadhar card number" })
+  @ApiProperty({ description: "Aadhar card number",format: 'binary' })
   @IsString()
   @IsNotEmpty()
-  aadhar_card!: string;
+  aadhar_card!: any;
 
-  @ApiProperty({ description: "PAN card number" })
+  @ApiProperty({ description: "PAN card number", format: 'binary'})
   @IsString()
   @IsNotEmpty()
-  pan_card!: string;
+  pan_card!: any;
 
   @ApiProperty({ description: "Total amount invested" })
   @IsNumber()
@@ -107,4 +107,16 @@ export class InvestorLoginDTO {
   @IsString()
   @IsOptional()
   google_id?: string;
+}
+
+export class InvestorTokenValidationDTO {
+  @ApiProperty({ description: "True or False" })
+  valid: boolean;
+
+  @ApiProperty({ required: false})
+  Investor?:{
+    uniq_id: number;
+    first_name: string;
+    last_name: string;
+  }
 }
