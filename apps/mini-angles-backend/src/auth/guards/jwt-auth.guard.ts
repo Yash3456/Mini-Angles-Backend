@@ -8,7 +8,7 @@ import {
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { Request } from 'express';
-import { SERVICES, TCP_PATTERN } from 'Libs/Common/Constant';
+import { SERVICES, TCP_PATTERNS } from 'Libs/Common/Constant';
 import { TokenValidationResponseDto } from 'Libs/Common/DTO/auth.dto';
 
 interface ExpressRequest {
@@ -36,15 +36,20 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractTokenFromHeader(request);
+    const routePath = request.route.path;
 
     if (!token) {
       throw new UnauthorizedException('Access token is required');
     }
 
+    let pattern = routePath.includes('SME')
+      ? TCP_PATTERNS.SME_AUTH_VERFIY_TOKEN
+      : TCP_PATTERNS.INVESETER_AUTH_VERFIY_TOKEN;
+
     try {
       const result = await firstValueFrom(
         this.authClient.send<TokenValidationResponseDto>(
-          TCP_PATTERN.AUTH_VERFIY_TOKEN,
+          pattern,
           { token },
         ),
       );

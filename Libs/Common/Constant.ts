@@ -1,18 +1,25 @@
 export const SERVICES = {
   AUTH_SERVICE: 'AUTH_SERVICE',
   USER_SERVICE: 'USER_SERVICE',
-  LOAN_SERVICE:'LOAN_SERVICE',
+  LOAN_SERVICE: 'LOAN_SERVICE',
   MONEY_SERVICE: 'MONEY_SERVICE',
   MINI_ANGELS_BACKEND: 'MINI_ANGELS_BACKEND',
 } as const;
 
-export const TCP_PATTERN = {
-  // Auth Service
-  AUTH_LOGIN: 'auth.login',
-  AUTH_REGISTER: 'auth.register',
-  AUTH_VERFIY_TOKEN: 'auth.verify-token',
-  AUTH_REFRESH_TOKEN: 'auth.refresh-token',
-  AUTH_LOGOUT: 'auth.logout',
+export const TCP_PATTERNS = {
+  // SME Auth Service
+  SME_AUTH_LOGIN: 'sme.auth.login',
+  SME_AUTH_REGISTER: 'sme.auth.register',
+  SME_AUTH_VERFIY_TOKEN: 'sme.auth.verify-token',
+  SME_AUTH_REFRESH_TOKEN: 'sme.auth.refresh-token',
+  SME_AUTH_LOGOUT: 'sme.auth.logout',
+
+  // Invester Auth Service
+  INVESETER_AUTH_LOGIN: 'invester.auth.login',
+  INVESETER_AUTH_REGISTER: 'invester.auth.register',
+  INVESETER_AUTH_VERFIY_TOKEN: 'invester.auth.verify-token',
+  INVESETER_AUTH_REFRESH_TOKEN: 'invester.auth.refresh-token',
+  INVESETER_AUTH_LOGOUT: 'invester.auth.logout',
 
   //User Service
   USER_CREATE: 'user.create',

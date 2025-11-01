@@ -18,13 +18,10 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import {
-  AuthResponseDto,
-  LoginDto,
-  RefreshTokenDto,
-  RegisterDto,
-} from '@app/common/dto/auth.dto';
-import { BaseResponseDto } from '@app/common/dto/base.dto';
+import { BaseResponseDto } from 'Libs/Common/DTO/base.dto';
+import { CreateSMEDto, SMEResponse } from 'Libs/Common/DTO/SME.dto';
+import { LoginDto, RefreshTokenDto } from 'Libs/Common/DTO/auth.dto';
+import { CreateInvestorDto, InvestorResponse } from 'Libs/Common/DTO/Investor.dto';
 
 interface AuthenticatedRequest {
   user: {
@@ -40,47 +37,91 @@ interface AuthenticatedRequest {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('register')
-  @ApiOperation({ summary: 'Register a new user' })
+  @Post('SMERegister')
+  @ApiOperation({ summary: 'Register a new SME user' })
   @ApiResponse({
     status: 201,
     description: 'User registered successfully',
-    type: AuthResponseDto,
+    type: SMEResponse,
   })
-  async register(
-    @Body() registerDto: RegisterDto,
-  ): Promise<BaseResponseDto<AuthResponseDto>> {
-    const result = await this.authService.register(registerDto);
+  async SMEregister(
+    @Body() registerDto: CreateSMEDto,
+  ): Promise<BaseResponseDto<SMEResponse>> {
+    const result = await this.authService.SMEregister(registerDto);
     return new BaseResponseDto(result, 'User registered successfully');
   }
 
-  @Post('login')
+  @Post('InvesterRegister')
+  @ApiOperation({ summary: 'Register a new Invester user' })
+  @ApiResponse({
+    status: 201,
+    description: 'Invester User registered successfully',
+    type: InvestorResponse,
+  })
+  async InvesterRegister(
+    @Body() registerDto: CreateInvestorDto,
+  ): Promise<BaseResponseDto<InvestorResponse>> {
+    const result = await this.authService.InvesterRegister(registerDto);
+    return new BaseResponseDto(result, 'Invester User registered successfully');
+  }
+
+  @Post('SMElogin')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login user' })
+  @ApiOperation({ summary: 'Login SME user' })
   @ApiResponse({
     status: 200,
-    description: 'Login successful',
-    type: AuthResponseDto,
+    description: 'Login successful for SME User',
+    type: SMEResponse,
   })
   async login(
     @Body() loginDto: LoginDto,
-  ): Promise<BaseResponseDto<AuthResponseDto>> {
-    const result = await this.authService.login(loginDto);
+  ): Promise<BaseResponseDto<SMEResponse>> {
+    const result = await this.authService.SMELogin(loginDto);
+    return new BaseResponseDto(result, 'Login successful');
+  }
+  
+  @Post('InvesterLogin')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login Invester user' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful for Invester User',
+    type: InvestorResponse,
+  })
+  async Investerlogin(
+    @Body() loginDto: LoginDto,
+  ): Promise<BaseResponseDto<InvestorResponse>> {
+    const result = await this.authService.Investerlogin(loginDto);
     return new BaseResponseDto(result, 'Login successful');
   }
 
-  @Post('refresh')
+  @Post('SMERefresh')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Refresh access token' })
+  @ApiOperation({ summary: 'Refresh access token for SME' })
   @ApiResponse({
     status: 200,
     description: 'Token refreshed successfully',
-    type: AuthResponseDto,
+    type: SMEResponse,
   })
   async refreshToken(
     @Body() refreshTokenDto: RefreshTokenDto,
-  ): Promise<BaseResponseDto<AuthResponseDto>> {
-    const result = await this.authService.refreshToken(refreshTokenDto);
+  ): Promise<BaseResponseDto<SMEResponse>> {
+    const result = await this.authService.SMERefreshToken(refreshTokenDto);
+    return new BaseResponseDto(result, 'Token refreshed successfully');
+  }
+
+  @Post("InvesterRefresh")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token for Invester' })
+  @ApiResponse({
+    status: 200,
+    description: 'Token refreshed successfully for Invester',
+    type: InvestorResponse,
+  })
+  async InvesterRefreshToken(
+    @Body() refreshTokenDto: RefreshTokenDto,
+  ): Promise<BaseResponseDto<InvestorResponse>> {
+    const result = await this.authService.InvesterRefreshToken(refreshTokenDto);
     return new BaseResponseDto(result, 'Token refreshed successfully');
   }
 
@@ -95,15 +136,27 @@ export class AuthController {
     return new BaseResponseDto(req.user, 'Profile retrieved successfully');
   }
 
-  @Post('logout')
+  @Post('SMElogout')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Logout user' })
+  @ApiOperation({ summary: 'Logout SME user' })
   async logout(
     @Request() req: AuthenticatedRequest,
   ): Promise<BaseResponseDto<{ success: boolean }>> {
-    const result = await this.authService.logout(req.user.id);
+    const result = await this.authService.SMElogout(req.user.id);
     return new BaseResponseDto(result, 'Logout successful');
+  }
+
+  @Post('Investerlogout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Logout Invester user' })
+  async Investerlogout(
+    @Request() req: AuthenticatedRequest,
+  ): Promise<BaseResponseDto<{ success: boolean }>> {
+    const result = await this.authService.Investerlogout(req.user.id);
+    return new BaseResponseDto(result, 'Invester Logout successful');
   }
 }

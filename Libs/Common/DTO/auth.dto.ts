@@ -160,3 +160,12 @@ export class TokenValidationResponseDto {
     role:string;
   }
 }
+
+
+// ----------------- Refresh Token -----------------
+export class RefreshTokenDto {
+  @ApiProperty({ description: "Refresh token" })
+  @IsString()
+  @IsNotEmpty()
+  refresh_token!: string;
+}
