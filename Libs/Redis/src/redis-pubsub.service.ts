@@ -26,7 +26,7 @@ export class RedisPubSubService implements OnModuleInit, OnModuleDestroy {
     const redisURL = this.config.get<string>('REDIS_URL');
 
     if (!redisURL) {
-      throw new error('REDIS_URL is not defined in the Configuration');
+      throw new Error('REDIS_URL is not defined in the Configuration');
     }
 
     this.Publisher = new Redis(redisURL);

@@ -6,6 +6,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { DatabaseModule } from 'Libs/Database/src/database.module';
 import { RedisModule } from 'Libs/Redis/src';
 import { PassportModule } from '@nestjs/passport';
+import { OcrTesseractService } from 'Libs/Hooks';
 
 @Module({
   imports: [
@@ -25,6 +26,6 @@ import { PassportModule } from '@nestjs/passport';
     RedisModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, OcrTesseractService],
 })
 export class AuthModule {}

@@ -48,7 +48,7 @@ if (process.env.NODE_ENV !== 'production') {
   const port: number = configService.get<number>('API_GATEWAY_PORT') ?? 3000;
   await app.listen(port, '0.0.0.0');
 
-   logger.log(`🚀 API Gateway is running on: http://localhost:${port}`);
+   logger.log(`🚀 Mini Angels Backend is running on: http://localhost:${port}`);
   if (process.env.NODE_ENV !== 'production') {
     logger.log(`📚 API Documentation: http://localhost:${port}/docs`);
   }

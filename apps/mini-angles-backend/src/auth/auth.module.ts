@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { SERVICES } from '@app/common/constant';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { SERVICES } from 'Libs/Common/Constant';
 
 @Module({
   imports: [
