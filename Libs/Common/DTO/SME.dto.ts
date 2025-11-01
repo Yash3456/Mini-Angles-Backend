@@ -159,14 +159,3 @@ export class SMELoginDTO {
   google_id?: string;
 }
 
-export class SMETokenValidationDTO {
-  @ApiProperty({ description: 'SME Token Validation' })
-  valid: boolean;
-
-  @ApiProperty({ required: false })
-  SME?: {
-    uniq_id: number;
-    first_name: string;
-    last_name: string;
-  };
-}

@@ -11,16 +11,15 @@ import {
   CreateSMEDto,
   SMELoginDTO,
   SMEResponse,
-  SMETokenValidationDTO,
 } from 'Libs/Common/DTO/SME.dto';
 import {
   CreateInvestorDto,
   InvestorLoginDTO,
   InvestorResponse,
-  InvestorTokenValidationDTO,
 } from 'Libs/Common/DTO/Investor.dto';
 import { REDIS_KEYS } from 'Libs/Common/Constant';
 import { OcrTesseractService } from 'Libs/Hooks';
+import { TokenValidationResponseDto } from 'Libs/Common/DTO/auth.dto';
 
 @Injectable()
 export class AuthService {
@@ -557,7 +556,7 @@ export class AuthService {
     }
   }
 
-  async SMEVerifyToken(token: string): Promise<SMETokenValidationDTO> {
+  async SMEVerifyToken(token: string): Promise<TokenValidationResponseDto> {
     try {
       let payload = await this.jwtService.verifyAsync(token);
 
@@ -568,7 +567,7 @@ export class AuthService {
       if (cachedUser) {
         return {
           valid: true,
-          SME: cachedUser as any,
+          user: cachedUser as any,
         };
       } else {
         let UserfromDB = await this.prisma.sME.findUnique({
@@ -592,10 +591,11 @@ export class AuthService {
         );
         return {
           valid: true,
-          SME: {
+          user: {
             uniq_id: UserfromDB.uniq_id,
             first_name: UserfromDB.first_name,
             last_name: UserfromDB.last_name || '',
+            role:'sme'
           },
         };
       }
@@ -607,7 +607,7 @@ export class AuthService {
 
   async InvestorVerifytoken(
     token: string,
-  ): Promise<InvestorTokenValidationDTO> {
+  ): Promise<TokenValidationResponseDto> {
     try {
       const payload = await this.jwtService.verifyAsync(token);
 
@@ -618,7 +618,7 @@ export class AuthService {
       if (cachedUser) {
         return {
           valid: true,
-          Investor: cachedUser as any,
+          user: cachedUser as any,
         };
       } else {
         let UserfromDB = await this.prisma.investor.findUnique({
@@ -643,10 +643,11 @@ export class AuthService {
 
         return {
           valid: true,
-          Investor: {
+          user: {
             uniq_id: UserfromDB.uniq_id,
             first_name: UserfromDB.first_name,
             last_name: UserfromDB.last_name || '',
+            role:'investor'
           },
         };
       }

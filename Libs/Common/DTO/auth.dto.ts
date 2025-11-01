@@ -154,8 +154,7 @@ export class TokenValidationResponseDto {
 
   @ApiProperty({required: true})
   user?: {
-    id:string;
-    email:string;
+    uniq_id:number;
     first_name:string;
     last_name:string;
     role:string;
