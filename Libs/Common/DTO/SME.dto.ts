@@ -7,10 +7,10 @@ import {
   IsBoolean,
   IsNumber,
   IsNotEmpty,
-  IsJSON,
   IsArray,
   ArrayNotEmpty,
 } from 'class-validator';
+import { Transform, Type } from 'class-transformer'; // <-- IMPORTED
 
 export class CreateSMEDto {
   @ApiProperty({ description: 'First name of the SME' })
@@ -49,12 +49,14 @@ export class CreateSMEDto {
   company_address!: string;
 
   @ApiProperty({ description: 'Monthly sales' })
-  @IsString()
+  @Type(() => Number)
+  @IsNumber()
   @IsNotEmpty()
   company_monthly_sales!: number;
 
   @ApiProperty({ description: 'Annual sales' })
-  @IsString()
+  @Type(() => Number)
+  @IsNumber()
   @IsNotEmpty()
   company_annual_sales!: number;
 
@@ -69,37 +71,38 @@ export class CreateSMEDto {
   role?: string;
 
   @ApiProperty({ description: 'Aadhar number', format: 'binary' })
-  @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   aadhar!: any;
 
   @ApiProperty({ description: 'PAN number', format: 'binary' })
-  @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   pan!: any;
 
   @ApiProperty({
     description: 'Company collaterals as an array of strings',
     type: [String],
-    example: ['pan.pdf', 'aadhar.pdf'],
+    example: ['"pan.pdf"', '"aadhar.pdf"'],
   })
+  @Transform(({ value }) => (typeof value === 'string' ? JSON.parse(value) : value))
   @IsArray()
   @ArrayNotEmpty()
   @IsString({ each: true })
   collaterals!: string[];
 
   @ApiProperty({ description: 'Verification status' })
+  @Transform(({ value }) => value === 'true' || value === true)
   @IsBoolean()
   isverified!: boolean;
 
   @ApiProperty({ description: 'GST number' })
   @IsString()
   @IsNotEmpty()
-  Company_GST_Number: string;
+  company_GST_Number: string;
 
   @ApiProperty({ description: 'Balance amount' })
+  @Type(() => Number)
   @IsNumber()
-  Balance_Amount!: number;
+  balance_amount!: number;
 
   @ApiProperty({ description: 'Company logo URL' })
   @IsString()

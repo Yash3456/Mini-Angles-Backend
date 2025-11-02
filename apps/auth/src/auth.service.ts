@@ -85,15 +85,17 @@ export class AuthService {
         company_annual_sales,
         google_id,
         role,
-        Company_GST_Number,
+        company_GST_Number,
         company_description,
         aadhar,
         pan,
         collaterals,
         company_logo,
-        Balance_Amount,
+        balance_amount,
         isverified,
       } = createSMEDto;
+
+      console.log('CreateSMEDto received at service file:', createSMEDto);
 
       let existingUser = await this.prisma.sME.findUnique({
         where: { phone_number },
@@ -125,13 +127,13 @@ export class AuthService {
           company_annual_sales,
           google_id,
           role,
-          company_GST_Number: Company_GST_Number,
+          company_GST_Number,
           company_description,
           aadhar: Aadharnumber?.aadhar_matches?.[0] || null,
           pan: Pannumber?.pan_matches?.[0] || null,
           collaterals: collaterals || ([] as Prisma.JsonValue),
           company_logo,
-          balance_amount: Balance_Amount,
+          balance_amount,
           isverified,
         },
       });

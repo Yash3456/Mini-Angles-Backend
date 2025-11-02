@@ -6,6 +6,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { SERVICES } from 'Libs/Common/Constant';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { RedisModule } from 'Libs/Redis/src';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -25,16 +26,8 @@ import { RedisModule } from 'Libs/Redis/src';
         name: SERVICES.AUTH_SERVICE,
         transport: Transport.TCP,
         options: {
-          host: process.env.AUTH_SERVICE_HOST || 'localhost',
+          host: 'localhost',
           port: parseInt(process.env.AUTH_SERVICE_PORT || '3001'),
-        },
-      },
-      {
-        name: SERVICES.USER_SERVICE,
-        transport: Transport.TCP,
-        options: {
-          host: process.env.USER_SERVICE_HOST || 'localhost',
-          port: parseInt(process.env.USER_SERVICE_PORT || '3002'),
         },
       },
       {
@@ -55,6 +48,7 @@ import { RedisModule } from 'Libs/Redis/src';
       },
     ]),
     RedisModule,
+    AuthModule
   ],
   controllers: [AppController],
   providers: [AppService],

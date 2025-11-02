@@ -15,15 +15,7 @@ import { SERVICES } from 'Libs/Common/Constant';
           host: 'localhost',
           port: parseInt(process.env.AUTH_SERVICE_PORT || '3001'),
         },
-      },
-      {
-        name: SERVICES.USER_SERVICE,
-        transport: Transport.TCP,
-        options: {
-          host: 'localhost',
-          port: parseInt(process.env.USER_SERVICE_PORT || '3002'),
-        },
-      },
+      }
     ]),
   ],
   controllers: [AuthController],

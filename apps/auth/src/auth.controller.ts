@@ -13,6 +13,7 @@ export class AuthController {
   @MessagePattern(TCP_PATTERNS.SME_AUTH_REGISTER)
   SMEregister(@Payload() registerDto: CreateSMEDto) {
     this.logger.debug(`Register request: ${registerDto.company_email}`);
+    console.log('SME Register DTO received at controller:', registerDto);
     return this.AuthService.createSME(registerDto);
   }
 }

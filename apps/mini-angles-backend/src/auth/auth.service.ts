@@ -13,6 +13,7 @@ export class AuthService {
   ) {}
 
   async SMEregister(registerDto: CreateSMEDto): Promise<SMEResponse> {
+    console.log("seding the request to the auth server");
     return firstValueFrom(
       this.authClient.send(TCP_PATTERNS.SME_AUTH_REGISTER, registerDto),
     );
